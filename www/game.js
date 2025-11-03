@@ -154,6 +154,60 @@ function stopBreathing() {
     gameContainer.style.boxShadow = '';
 }
 
+// --- LÓGICA DE RACHA DIARIA (LOCALSTORAGE) ---
+
+/**
+ * Obtiene una fecha en formato YYYY-MM-DD
+ * @param {Date} date - El objeto de fecha a formatear
+ * @returns {string} - La fecha como 'YYYY-MM-DD'
+ */
+function getFormattedDate(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0'); // Meses son 0-indexados
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Revisa y actualiza la racha diaria del jugador.
+ * Se llama solo UNA VEZ al iniciar el juego.
+ * @returns {number} - El número de racha actual.
+ */
+function updateDailyStreak() {
+    const today = new Date();
+    const todayStr = getFormattedDate(today);
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getFormattedDate(yesterday);
+
+    // 1. Obtener datos guardados
+    const lastPlayDate = localStorage.getItem('lastPlayDate');
+    let streakCount = parseInt(localStorage.getItem('zenStreakCount')) || 0;
+
+    // 2. Decidir la lógica
+    if (lastPlayDate === todayStr) {
+        // Ya jugó hoy. No hacer nada. Devolver la racha actual.
+        return streakCount;
+    }
+
+    if (lastPlayDate === yesterdayStr) {
+        // ¡La racha continúa!
+        streakCount++;
+    } else {
+        // Se rompió la racha (o es el primer día)
+        streakCount = 1;
+    }
+
+    // 3. Guardar los nuevos datos
+    localStorage.setItem('lastPlayDate', todayStr);
+    localStorage.setItem('zenStreakCount', streakCount);
+
+    return streakCount;
+}
+
+// --- Fin de la Lógica de Racha ---
+
 // --- TUTORIAL DE CALIBRACIÓN ---
 function startTutorial() {
     tutorialActive = true;
@@ -583,6 +637,78 @@ function spawnAsteroid(deltaTime) {
 }
 
 // --- FUNCIÓN GAMEOVER CON LÓGICA DE MENSAJE ACTUALIZADA ---
+// --- FUNCIÓN PARA MOSTRAR ESTADÍSTICAS ---
+function showStats() {
+    const currentStreak = parseInt(localStorage.getItem('zenStreakCount')) || 0;
+    
+    // Mensajes de beneficios según la racha (días 1-30+)
+    const benefitMessages = {
+        1: "Has dado el primer paso hacia el bienestar mental. En unos días la respiración consciente va a activar tu sistema nervioso parasimpático.",
+        2: "Con tu práctica, puedes notar pequeñas mejoras en tu concentración y una sensación ligera de calma. Esto es el primer efecto del sistema nervioso parasimpático activándose.",
+        3: "Si continúas practicando, tu cuerpo comienza a acostumbrarse a la respiración controlada, ayudando a reducir respuestas inmediatas de estrés.",
+        4: "La respiración regular empieza a influir en tu frecuencia cardíaca y en tu ritmo respiratorio, aunque de forma sutil.",
+        5: "Tu mente puede sentirse un poco más clara y enfocada. La práctica constante empieza a entrenar tu capacidad de atención.",
+        6: "Al seguir respirando conscientemente, tu cuerpo aprende a relajarse más rápido ante pequeñas tensiones o molestias.",
+        7: "Una semana de práctica ayuda a notar un patrón de calma más consistente. Es el comienzo de una regulación más estable del sistema nervioso.",
+        8: "Puedes sentir que los momentos de estrés se vuelven ligeramente más fáciles de manejar gracias a la respiración controlada.",
+        9: "Tu mente empieza a asociar la respiración profunda con una sensación de relajación, formando un hábito saludable.",
+        10: "Diez días de práctica diaria permiten notar una ligera reducción en la sensación general de ansiedad y tensión.",
+        11: "Los efectos de la respiración consciente se hacen más evidentes en tu concentración y claridad mental.",
+        12: "Tu cuerpo responde de forma más estable a situaciones de estrés. La respiración pausada facilita la calma inmediata.",
+        13: "La práctica constante empieza a mejorar la percepción de bienestar, incluso en momentos tranquilos del día.",
+        14: "Dos semanas de respiración consciente refuerzan la activación parasimpática y tu capacidad de relajarte bajo presión.",
+        15: "Puedes notar que los pensamientos acelerados disminuyen más rápido cuando respiras conscientemente.",
+        16: "El cuerpo y la mente empiezan a sincronizarse con la respiración profunda, mejorando la regulación emocional.",
+        17: "La práctica diaria ayuda a que tu respuesta al estrés sea más calmada y controlada.",
+        18: "Puedes sentir un aumento en la claridad mental y en la capacidad de concentración sostenida.",
+        19: "La respiración consciente empieza a consolidar un patrón de relajación que se mantiene más tiempo entre sesiones.",
+        20: "Veinte días de práctica diaria permiten notar beneficios más consistentes en la gestión de ansiedad y estrés.",
+        21: "Tu mente y cuerpo comienzan a responder más rápido a la respiración como herramienta de calma y enfoque.",
+        22: "La regulación de la frecuencia cardíaca y respiratoria se vuelve más estable, incluso fuera de la sesión de respiración.",
+        23: "Se empieza a formar una memoria corporal de la respiración consciente, facilitando la relajación automática.",
+        24: "La práctica constante fortalece la conexión entre respiración, calma y concentración mental.",
+        25: "Puedes notar que los momentos de estrés diario se perciben menos intensos y más manejables.",
+        26: "Tu mente está más entrenada para responder con calma, gracias a la repetición y consistencia de la práctica.",
+        27: "La respiración consciente empieza a integrarse naturalmente en tu día a día, sin esfuerzo consciente.",
+        28: "Veintiocho días de práctica ayudan a consolidar beneficios de regulación emocional, calma y concentración sostenida.",
+        29: "La práctica diaria fortalece la resiliencia mental y la capacidad de mantener la atención bajo presión.",
+        30: "Tras un mes de respiración consciente, tu cuerpo y mente están más acostumbrados a la calma, y tu capacidad de manejar estrés y mantener concentración se ha reforzado."
+    };
+    
+    // Obtener el mensaje correspondiente al día, o uno genérico si supera 30 días
+    let benefitMessage = benefitMessages[currentStreak] || "Maestría en desarrollo. Has alcanzado un nivel de práctica que optimiza la oxigenación cerebral y la homeostasis autonómica de forma sostenida.";
+    
+    messageBox.innerHTML = `
+        <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('assets/tree-background.jpeg');
+            background-size: cover;
+            background-position: center;
+            filter: brightness(0.4);
+            z-index: -1;
+        "></div>
+        
+        <p style="color: #ff9900; font-size: 2.5rem; margin: 20px 0; text-shadow: 0 0 10px #ff9900; position: relative; z-index: 1;">
+            🔥 ${currentStreak}
+        </p>
+        <p style="color: #00ffaa; font-size: 1.2rem; margin-bottom: 25px; position: relative; z-index: 1;">
+            ${currentStreak === 1 ? 'día consecutivo' : 'días consecutivos'}
+        </p>
+        
+        <p style="font-size: 1.1rem; line-height: 1.6; margin: 20px 0; color: #e0e0e0; position: relative; z-index: 1;">
+            ${benefitMessage}
+        </p>
+        
+        <button id="back-button" style="margin-top: 25px; position: relative; z-index: 1;">Volver</button>
+    `;
+    
+    document.getElementById('back-button').addEventListener('click', gameOver);
+}
+
 function gameOver() {
     gameRunning = false;
     cancelAnimationFrame(animationFrameId);
@@ -594,6 +720,9 @@ function gameOver() {
     endTime = performance.now();
     const totalZenTime = endTime - startTime;
     const totalMinutes = Math.floor(totalZenTime / 60000);
+    
+    // Obtener la racha actual
+    const currentStreak = parseInt(localStorage.getItem('zenStreakCount')) || 0;
     
     let contentHTML = ""; // Variable para el contenido del modal
 
@@ -608,13 +737,19 @@ function gameOver() {
                 <span style="color: #ffcc00; font-size: 3em; text-shadow: 0 0 10px #ffcc00;">${score}</span>
             </p>
             
-            <!-- 2. Mensaje de Segundos + Motivación -->
-            <p class="zen-motivation" style="margin-top: 0; font-size: clamp(1.1rem, 4vw, 1.3rem);">
-                ${formattedZenTime}<br><strong>¡Vos podés respirar más!</strong>
+            <!-- 2. Tiempo -->
+            <p style="margin-top: 0; margin-bottom: 10px; font-size: clamp(1.1rem, 4vw, 1.3rem); color: #00ffaa;">
+                ${formattedZenTime}
             </p>
             
-            <!-- 3. Botón de Reinicio -->
-            <button id="start-button" style="margin-top: 35px;">Reiniciar Juego</button>
+            <!-- 3. Mensaje de Motivación -->
+            <p class="zen-motivation" style="margin-top: 0; margin-bottom: 25px; font-size: clamp(1.1rem, 4vw, 1.3rem);">
+                <strong>¡Vos podés respirar más!</strong>
+            </p>
+            
+            <!-- 4. Botones -->
+            <button id="stats-button" style="margin-top: 25px; background: #00ffaa; color: #000;">Ver Estadísticas</button>
+            <button id="start-button" style="margin-top: 10px;">Reiniciar Juego</button>
         `;
     
     } else {
@@ -641,7 +776,6 @@ function gameOver() {
         
         // --- NUEVO FORMATO DE MENSAJE (M:SS) ---
         const minimalTime = formatTimeMinimal(totalZenTime); // Llama al nuevo formato "M:SS"
-        let fullMessage = `<strong>${minimalTime}</strong> y ya empezaste a ${zenAchievement}`;
 
         contentHTML = `
             <!-- 1. Puntuación -->
@@ -649,20 +783,27 @@ function gameOver() {
                 <span style="color: #ffcc00; font-size: 3em; text-shadow: 0 0 10px #ffcc00;">${score}</span>
             </p>
             
-            <!-- 2. Mensaje de Logro Zen (Actualizado) -->
-            <p class="zen-feedback" style="margin-top: 0; font-size: clamp(1.1rem, 4vw, 1.3rem);">
-                ${fullMessage}
+            <!-- 2. Tiempo -->
+            <p style="margin-top: 0; margin-bottom: 10px; font-size: clamp(1.1rem, 4vw, 1.3rem); color: #00ffaa;">
+                ${minimalTime}
             </p>
             
-            <!-- 3. Botón de Reinicio -->
-            <button id="start-button" style="margin-top: 35px;">Reiniciar Juego</button>
+            <!-- 3. Mensaje de Logro Zen -->
+            <p class="zen-feedback" style="margin-top: 0; margin-bottom: 25px; font-size: clamp(1.1rem, 4vw, 1.3rem);">
+                Empezaste a ${zenAchievement}
+            </p>
+            
+            <!-- 4. Botones -->
+            <button id="stats-button" style="margin-top: 25px; background: #00ffaa; color: #000;">Ver Estadísticas</button>
+            <button id="start-button" style="margin-top: 10px;">Reiniciar Juego</button>
         `;
     }
     
     messageBox.innerHTML = contentHTML;
     
-    // CRÍTICO: Reasignar el listener al botón RECIÉN CREADO para reiniciar el juego
+    // CRÍTICO: Reasignar los listeners a los botones RECIÉN CREADOS
     document.getElementById('start-button').addEventListener('click', handleStartGame);
+    document.getElementById('stats-button').addEventListener('click', showStats);
     
     messageBox.classList.add('visible');
 }
@@ -699,18 +840,20 @@ function gameLoop(timestamp) {
 function handleStartGame() {
     if (gameRunning || tutorialActive) return; 
 
-    // Reconstruir el mensaje inicial si no existe ya
-    if (!document.querySelector('#message-box h2') || document.querySelector('#message-box h2').textContent !== 'Tirador Cósmico') {
-        messageBox.innerHTML = `
-            <h2>Tirador Cósmico</h2>
-            <p class="zen-benefit">
-                Este juego es un ejercicio de respiración diseñado para calmar tu sistema nervioso. Sigue el ritmo y relaja tu mente.
-            </p>
-            <button id="start-button">Iniciar Juego</button>
-        `;
-        // Asegurar que el listener está en el nuevo botón
-        document.getElementById('start-button').addEventListener('click', handleStartGame);
-    }
+    // Actualizar la racha diaria (sin mostrarla aquí)
+    updateDailyStreak();
+
+    // Reconstruir mensaje de inicio
+    messageBox.innerHTML = `
+        <h2>Tirador Cósmico</h2>
+        
+        <p class="zen-benefit">
+            Este juego es un ejercicio de respiración diseñado para calmar tu sistema nervioso. Sigue el ritmo y relaja tu mente.
+        </p>
+        <button id="start-button">Iniciar Juego</button>
+    `;
+    // Asegurar que el listener está en el nuevo botón
+    document.getElementById('start-button').addEventListener('click', handleStartGame);
 
     if (backgroundMusic.paused) {
         backgroundMusic.play().catch(() => {});
@@ -718,15 +861,17 @@ function handleStartGame() {
 
     messageBox.classList.remove('visible');
 
-    // Verificar si es la primera vez
+    // Verificar si debe mostrar el tutorial (primeros 3 días)
+    const currentStreak = parseInt(localStorage.getItem('zenStreakCount')) || 0;
     const haVistoTutorial = localStorage.getItem('haVistoElTutorial');
     
-    if (haVistoTutorial === 'true') {
-        // Ya vio el tutorial, iniciar juego directamente
-        startActualGame();
-    } else {
-        // Primera vez, mostrar tutorial
+    if (currentStreak <= 3 && haVistoTutorial !== 'true') {
+        // Primeros 3 días, mostrar tutorial
         startTutorial();
+    } else {
+        // Día 4 en adelante, iniciar juego directamente
+        localStorage.setItem('haVistoElTutorial', 'true');
+        startActualGame();
     }
 }
 
