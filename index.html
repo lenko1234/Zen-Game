@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Tirador Cósmico</title>
+    <!-- Use una fuente elegante y amigable con la ciencia ficción -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="game-container" id="game-container">
+        
+        <!-- NUEVA CAPA DE RESPLANDOR -->
+        <div class="breathing-overlay" id="breathing-overlay"></div>
+
+        <!-- BARRA DE UI MODIFICADA -->
+        <div class="info-bar">
+            <span id="score-display">0</span>
+            <div id="lives-display">
+                <!-- Los corazones se generan por JS -->
+            </div> 
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="message-box" class="visible">
+            <h2>Tirador Cósmico</h2>
+            
+            <p class="zen-benefit">
+                Este juego es un ejercicio de respiración diseñado para calmar tu sistema nervioso. Sigue el ritmo y relaja tu mente.
+            </p>
+            
+            <button id="start-button">Iniciar Juego</button>
+        </div>
+    </div>
+    
+    <!-- Controles Ocultos -->
+    <div class="mobile-controls-wrapper">
+        <button class="control-button" id="left-btn"> &lt; </button>
+        <button class="fire-button" id="fire-btn">DISPARAR</button>
+        <button class="control-button" id="right-btn"> &gt; </button>
+    </div>
+    
+    <script type="module" src="game.js"></script>
+</body>
+</html>

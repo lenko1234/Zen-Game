@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Tirador Cósmico</title>
+    <!-- Use una fuente elegante y amigable con la ciencia ficción -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Restablecimiento global y estilo del cuerpo */
+        body {
+            background-color: #0d0d1f; /* Azul oscuro del espacio profundo */
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding-top: 20px;
+            margin: 0;
+            overflow-x: hidden; /* Previene el scroll horizontal en móviles */
+            user-select: none;
+        }
+
+        /* Contenedor del Juego */
+        .game-container {
+            width: 95vw;
+            max-width: 600px; 
+            aspect-ratio: 1 / 1.5; 
+            background-color: #000000;
+            /* Estilo inicial del borde (Zen Level 1 - Exhale/Pause default) */
+            border: 5px solid #0000aa; 
+            box-shadow: 0 0 5px #0000aa, 0 0 3px #0000aa inset;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            /* Transición para el efecto de respiración - 5 segundos de duración */
+            transition: box-shadow 5s ease-in-out, border-color 0.5s; 
+            cursor: grab;
+        }
+        .game-container:active {
+            cursor: grabbing;
+        }
+        
+        /* --- Capa de Resplandor de Fondo --- */
+        .breathing-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Detrás del canvas y la UI */
+            /* Estado inicial (PAUSAR) */
+            background-color: #0000aa;
+            opacity: 0.05;
+            /* Transición suave de 5 segundos */
+            transition: background-color 5s ease-in-out, opacity 5s ease-in-out;
+            border-radius: 6px; /* Para coincidir con el contenedor interno */
+        }
+        
+        /* --- CLASES DE ANIMACIÓN DE RESPIRACIÓN (COLOR/INTENSIDAD) --- */
+        
+        /* 1. INHALAR (Verde/Expande) */
+        .breathing-inhale {
+            border-color: #00ff00 !important;
+            box-shadow: 0 0 40px #00ff00, 0 0 10px #00ff00 inset !important;
+        }
+        .breathing-inhale .breathing-overlay {
+            background-color: #00ff00;
+            opacity: 0.15; /* Sutil pero notable */
+        }
+
+        /* 2. SOSTENER 1 (Verde/Brillo máximo estable) */
+        .breathing-hold1 {
+            border-color: #00ffaa !important;
+            box-shadow: 0 0 40px #00ffaa, 0 0 10px #00ffaa inset !important;
+        }
+        .breathing-hold1 .breathing-overlay {
+            background-color: #00ffaa;
+            opacity: 0.15;
+        }
+        
+        /* 3. EXHALAR (Azul/El brillo se reduce) */
+        .breathing-exhale {
+            border-color: #0000ff !important;
+            box-shadow: 0 0 10px #0000ff, 0 0 5px #0000ff inset !important;
+        }
+        .breathing-exhale .breathing-overlay {
+            background-color: #0000ff;
+            opacity: 0.1;
+        }
+
+        /* 4. PAUSAR (Azul/Brillo mínimo estable) */
+        .breathing-hold2 {
+            border-color: #0000aa !important;
+            box-shadow: 0 0 5px #0000aa, 0 0 3px #0000aa inset !important;
+        }
+        .breathing-hold2 .breathing-overlay {
+            background-color: #0000aa;
+            opacity: 0.05;
+        }
+
+        /* Estilo del Canvas */
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: relative; /* Necesario para z-index */
+            z-index: 2; /* Encima de la capa de resplandor */
+            background-color: transparent; /* El fondo ahora es transparente */
+        }
+
+        /* --- BARRA DE INFORMACIÓN (MODIFICADA) --- */
+        .info-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 15px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between; /* Puntuación a la izq, Corazones a la der */
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10; /* Encima de todo */
+        }
+        
+        /* Puntuación (Solo número) */
+        #score-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffcc00; 
+            text-shadow: 0 0 5px rgba(255, 204, 0, 0.8);
+        }
+        
+        /* Corazones (Vidas) */
+        #lives-display {
+            display: flex;
+            gap: 5px; /* Espacio entre corazones */
+            font-size: 1.3rem; /* Tamaño del corazón */
+            color: #ff3333;
+            text-shadow: 0 0 5px #ff3333;
+        }
+        
+        /* Estilos de mensaje y botón de inicio (mantener) */
+        #message-box {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 20; /* Encima de todo */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s;
+            border-radius: 12px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #message-box.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #message-box h2 {
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            margin-bottom: 10px;
+            color: #ff3333;
+            text-shadow: 0 0 10px #ff3333;
+        }
+
+        #message-box p {
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            margin-bottom: 25px;
+            color: #00ffaa;
+        }
+        
+        /* Texto técnico de beneficios */
+        #message-box p.zen-benefit {
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
+            color: #aaffaa; 
+            max-width: 85%; 
+            margin: 15px auto;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+
+        /* Estilo específico para el texto final que incluye el tiempo */
+        #message-box p.final-score {
+            line-height: 1.5;
+            color: #ffffff;
+            font-size: clamp(1rem, 3.5vw, 1.3rem);
+        }
+
+        /* --- NUEVO ESTILO PARA FEEDBACK ZEN --- */
+        #message-box p.zen-feedback {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            border-left: 4px solid #00ffff;
+            background-color: rgba(0, 255, 255, 0.05);
+            color: #00ffff; /* Color Cian */
+            font-size: clamp(1rem, 3.5vw, 1.2rem);
+            font-weight: bold;
+            max-width: 85%;
+            text-shadow: 0 0 5px #00ffff;
+            line-height: 1.5;
+        }
+
+        /* Estilo para el mensaje de "Vos podés más" */
+        #message-box p.zen-motivation {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            color: #aaffaa; /* Verde claro */
+            font-size: clamp(1rem, 3.5vw, 1.2rem);
+            font-weight: bold;
+            max-width: 85%;
+            line-height: 1.5;
+        }
+
+
+        #start-button {
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-family: 'Orbitron', sans-serif;
+            border: 3px solid #00ffff;
+            background-color: #000044;
+            color: #00ffff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        #start-button:hover {
+            background-color: #00ffff;
+            color: #000044;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 1);
+        }
+
+        /* Controles Móviles (OCULTOS EN MODO ENFOQUE ZEN) */
+        .mobile-controls-wrapper {
+            display: none; /* Oculto ya que usamos control táctil directo */
+        }
+        
+        @media (min-width: 600px) {
+            .mobile-controls-wrapper {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container" id="game-container">
+        
+        <!-- NUEVA CAPA DE RESPLANDOR -->
+        <div class="breathing-overlay" id="breathing-overlay"></div>
+
+        <!-- BARRA DE UI MODIFICADA -->
+        <div class="info-bar">
+            <span id="score-display">0</span>
+            <div id="lives-display">
+                <!-- Los corazones se generan por JS -->
+            </div> 
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="message-box" class="visible">
+            <h2>Tirador Cósmico</h2>
+            
+            <!-- Texto Técnico de Beneficios -->
+            <p class="zen-benefit">
+                Beneficios Neurocognitivos: La implementación consciente del ciclo de Respiración de Caja (Box Breathing 4:4:4:4) facilita la modulación del Sistema Nervioso Autónomo, desplazando el equilibrio hacia el estado parasimpático.
+            </p>
+            
+            <!-- Instrucciones actualizadas -->
+            <p>Arrastra el dedo (o el mouse) para moverte.<br>El disparo es automático. Concéntrate en respirar.</p>
+            
+            <p style="color: #00ffaa; font-weight: bold;">¡El audio y el fondo te guiarán!</p>
+            <button id="start-button">Iniciar Juego</button>
+        </div>
+    </div>
+    
+    <!-- Controles Ocultos -->
+    <div class="mobile-controls-wrapper">
+        <button class="control-button" id="left-btn"> &lt; </button>
+        <button class="fire-button" id="fire-btn">DISPARAR</button>
+        <button class="control-button" id="right-btn"> &gt; </button>
+    </div>
+    
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const gameContainer = document.getElementById('game-container');
+            const messageBox = document.getElementById('message-box');
+            
+            // --- IDs DE UI ACTUALIZADOS ---
+            const scoreDisplay = document.getElementById('score-display');
+            const livesDisplay = document.getElementById('lives-display');
+            
+            let animationFrameId;
+            let lastTime = 0;
+            
+            // --- Variables de Dificultad (Basadas en Puntuación) ---
+            const BASE_SPAWN_INTERVAL = 1500; // 1.5 segundos
+            let currentSpawnInterval = BASE_SPAWN_INTERVAL;
+            let timeSinceLastAsteroid = BASE_SPAWN_INTERVAL;
+            const SCORE_DIFFICULTY_THRESHOLD = 500; // Cada 500 puntos
+            let currentScoreDifficultyLevel = 0;
+            const MIN_SPAWN_INTERVAL = 300; // Límite (0.3s)
+            let baseAsteroidSpeed = 1.0; // Multiplicador de velocidad base
+            
+            // Constantes y estado del juego
+            const GAME_WIDTH = 600;
+            const GAME_HEIGHT = 900; 
+            let gameRunning = false;
+            let score = 0;
+            let lives = 3;
+            
+            // TEMPORIZADOR DE CONCENTRACIÓN
+            let startTime = 0;
+            let endTime = 0;
+
+            // ESTADO ZEN 
+            let zenLevel = 1; 
+
+            // Estado de la respiración
+            let breathingTimeoutId = null;
+            const BREATHING_PHASES = ['INHALAR', 'SOSTENER', 'EXHALAR', 'PAUSAR']; 
+            let currentPhaseIndex = 0;
+            const PHASE_DURATION_MS = 5000; // 5 segundos por fase (20s ciclo total)
+            const PHASE_DURATION_SECONDS = PHASE_DURATION_MS / 1000; // 5 segundos
+            
+            // --- VARIABLES GLOBALES DE AUDIO ---
+            let audioContext;
+            let zenOscillator;
+            let zenGain;
+
+            // --- FUNCIÓN DE INICIALIZACIÓN DE AUDIO ---
+            function initAudio() {
+                if (audioContext) return; 
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.error("Web Audio API no es compatible con este navegador.");
+                    return;
+                }
+                
+                zenOscillator = audioContext.createOscillator();
+                zenOscillator.type = 'sine'; 
+                zenOscillator.frequency.value = 300; 
+                
+                zenGain = audioContext.createGain();
+                zenGain.gain.value = 0; 
+
+                zenOscillator.connect(zenGain).connect(audioContext.destination);
+                
+                try {
+                    zenOscillator.start(); 
+                } catch(e) {}
+            }
+
+            // --- FUNCIÓN PARA REANUDAR EL AUDIO DE FORMA SEGURA ---
+            async function safelyResumeAudio(context) {
+                if (!context) return;
+                if (context.state === 'suspended' || context.state === 'closed') {
+                    if (context.state === 'closed') {
+                        initAudio(); 
+                        context = audioContext;
+                        if (!context) return;
+                    }
+                    await context.resume().catch(err => console.error("Error al reanudar el AudioContext:", err));
+                }
+            }
+
+
+            // Redimensionar el canvas para ajustarse al contenedor
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvas.width = GAME_WIDTH;
+                canvas.height = GAME_HEIGHT;
+                canvas.style.width = container.clientWidth + 'px';
+                canvas.style.height = container.clientHeight + 'px';
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas(); 
+
+            // Manejo de entrada
+            const keys = { left: false, right: false, space: false }; // space se activará automáticamente
+            let targetShipX = GAME_WIDTH / 2; // Posición X objetivo para la nave
+            
+            // --- LISTENERS DE CONTROL TÁCTIL/MOUSE EN EL CANVAS ---
+            
+            function getEventX(e) {
+                const rect = canvas.getBoundingClientRect();
+                let touch = e.touches ? e.touches[0] : e;
+                let scale = GAME_WIDTH / rect.width;
+                return (touch.clientX - rect.left) * scale;
+            }
+            
+            function moveShip(e) {
+                if (!gameRunning) return;
+                e.preventDefault(); // Prevenir scroll en móvil
+                targetShipX = getEventX(e);
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                if(gameRunning) gameContainer.style.cursor = 'grabbing';
+                moveShip(e);
+            });
+            canvas.addEventListener('mouseup', () => {
+                if(gameRunning) gameContainer.style.cursor = 'grab';
+            });
+            canvas.addEventListener('mouseleave', () => {
+                if(gameRunning) gameContainer.style.cursor = 'grab';
+            });
+            canvas.addEventListener('mousemove', moveShip);
+            
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                moveShip(e);
+            }, { passive: false });
+            canvas.addEventListener('touchmove', moveShip, { passive: false });
+            
+            
+            // --- LISTENERS DE TECLADO (Mantenidos como alternativa) ---
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+            });
+            
+            // --- Lógica de Respiración de Caja ---
+            function updateBreathingPhase() {
+                const phaseName = BREATHING_PHASES[currentPhaseIndex];
+                
+                gameContainer.classList.remove('breathing-inhale', 'breathing-hold1', 'breathing-exhale', 'breathing-hold2');
+
+                if (phaseName === 'INHALAR') {
+                    gameContainer.classList.add('breathing-inhale');
+                } else if (phaseName === 'SOSTENER') {
+                    gameContainer.classList.add('breathing-hold1');
+                } else if (phaseName === 'EXHALAR') {
+                    gameContainer.classList.add('breathing-exhale');
+                } else if (phaseName === 'PAUSAR') {
+                    gameContainer.classList.add('breathing-hold2');
+                }
+                
+                if (gameRunning && audioContext && audioContext.state === 'running') {
+                    const now = audioContext.currentTime;
+                    const endTime = now + PHASE_DURATION_SECONDS;
+                    
+                    const maxGain = 0.9;   
+                    const minGain = 0.15;  
+                    const maxFreq = 500;
+                    const minFreq = 300;
+
+                    zenGain.gain.cancelScheduledValues(now);
+                    zenOscillator.frequency.cancelScheduledValues(now);
+
+                    if (phaseName === 'INHALAR') {
+                        zenGain.gain.linearRampToValueAtTime(maxGain, endTime); 
+                        zenOscillator.frequency.linearRampToValueAtTime(maxFreq, endTime);
+                    } else if (phaseName === 'SOSTENER') {
+                        zenGain.gain.setValueAtTime(maxGain, now);
+                        zenOscillator.frequency.setValueAtTime(maxFreq, now);
+                    } else if (phaseName === 'EXHALAR') {
+                        zenGain.gain.linearRampToValueAtTime(minGain, endTime);
+                        zenOscillator.frequency.linearRampToValueAtTime(minFreq, endTime);
+                    } else if (phaseName === 'PAUSAR') {
+                        zenGain.gain.setValueAtTime(minGain, now);
+                        zenOscillator.frequency.setValueAtTime(minFreq, now);
+                    }
+                }
+
+                currentPhaseIndex = (currentPhaseIndex + 1) % BREATHING_PHASES.length;
+
+                if (gameRunning) {
+                    breathingTimeoutId = setTimeout(updateBreathingPhase, PHASE_DURATION_MS);
+                }
+            }
+
+            function startBreathing() {
+                zenLevel = 1;
+
+                if (breathingTimeoutId) clearTimeout(breathingTimeoutId);
+                currentPhaseIndex = 0; 
+                updateBreathingPhase(); 
+            }
+
+            function stopBreathing() {
+                if (breathingTimeoutId) clearTimeout(breathingTimeoutId);
+                
+                gameContainer.classList.remove('breathing-inhale', 'breathing-hold1', 'breathing-exhale', 'breathing-hold2');
+                gameContainer.style.borderColor = ''; 
+                gameContainer.style.boxShadow = '';
+                
+                if (audioContext && zenGain) {
+                    zenGain.gain.cancelScheduledValues(audioContext.currentTime);
+                    zenGain.gain.setValueAtTime(0, audioContext.currentTime);
+                }
+            }
+            
+            // --- Clases de Juego ---
+
+            class Ship {
+                constructor() {
+                    this.width = 40;
+                    this.height = 30;
+                    this.x = GAME_WIDTH / 2 - this.width / 2;
+                    this.y = GAME_HEIGHT - this.height - 50; 
+                    this.speed = 8; // Velocidad para el teclado (de repuesto)
+                    this.laserCooldown = 200; // ms
+                    this.lastShotTime = 0;
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.fillStyle = '#00ffff'; 
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width / 2, this.y); 
+                    ctx.lineTo(this.x, this.y + this.height);    
+                    ctx.lineTo(this.x + this.width, this.y + this.height); 
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                update(deltaTime) {
+                    if (keys.left) {
+                        this.x -= this.speed;
+                        targetShipX = this.x + this.width / 2; 
+                    } else if (keys.right) {
+                        this.x += this.speed;
+                        targetShipX = this.x + this.width / 2; 
+                    } else {
+                        // Moverse suavemente (lerp) a la posición del táctil/mouse
+                        const newX = this.x + (targetShipX - (this.x + this.width / 2)) * 0.2;
+                        this.x = newX;
+                    }
+
+                    // --- MANTENER LÍMITES ---
+                    if (this.x < 0) {
+                        this.x = 0;
+                        targetShipX = this.width / 2;
+                    }
+                    if (this.x + this.width > GAME_WIDTH) {
+                        this.x = GAME_WIDTH - this.width;
+                        targetShipX = GAME_WIDTH - this.width / 2;
+                    }
+
+                    // --- LÓGICA DE DISPARO (AUTOMÁTICO) ---
+                    if (keys.space) { // keys.space se establece en true en resetGame()
+                        const now = performance.now();
+                        if (now - this.lastShotTime > this.laserCooldown) {
+                            lasers.push(new Laser(this.x + this.width / 2));
+                            this.lastShotTime = now;
+                        }
+                    }
+                }
+            }
+
+            class Laser {
+                constructor(startX) {
+                    this.width = 4;
+                    this.height = 15;
+                    this.x = startX - this.width / 2;
+                    this.y = ship.y;
+                    this.speed = 15;
+                    this.active = true;
+                }
+
+                draw() {
+                    ctx.fillStyle = '#ff33aa'; 
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                }
+
+                update() {
+                    this.y -= this.speed;
+                    if (this.y < -this.height) {
+                        this.active = false;
+                    }
+                }
+            }
+
+            // --- CLASE ASTEROID (VERSIÓN SIMPLE CON VELOCIDAD BASE) ---
+            class Asteroid {
+                constructor(size, x, y, dx, dy) { 
+                    this.size = size || (Math.random() < 0.5 ? 20 : 35); 
+                    this.x = x !== undefined ? x : Math.random() * (GAME_WIDTH - this.size);
+                    this.y = y !== undefined ? y : -this.size;
+                    this.radius = this.size / 2;
+                    this.color = '#cccccc';
+                    this.value = this.size === 35 ? 10 : 25; 
+                    
+                    const baseSpeed = 4 - (this.size / 15);
+                    
+                    this.dx = dx !== undefined ? dx : (Math.random() - 0.5) * 2; // Deriva horizontal base
+                    this.dy = dy !== undefined ? dy : (Math.random() * 0.5 + 1.5); // Movimiento de caída asegurado
+                    
+                    this.active = true;
+                }
+
+                draw() {
+                    const centerX = this.x + this.radius;
+                    const centerY = this.y + this.radius;
+                    
+                    ctx.save();
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                update() {
+                    // Aplicar multiplicador de velocidad global
+                    this.y += this.dy * baseAsteroidSpeed; 
+                    this.x += this.dx * baseAsteroidSpeed; // Deriva normal
+
+                    // --- LÓGICA DE BORDES SIMPLE ---
+                    if (this.x + this.size < 0) this.x = GAME_WIDTH;
+                    if (this.x > GAME_WIDTH) this.x = 0 - this.size;
+                    
+                    if (this.y > GAME_HEIGHT) {
+                        this.active = false;
+                    }
+                }
+
+                split() {
+                    if (this.size > 20) {
+                        const newSize = this.size / 2;
+                        
+                        // Los asteroides divididos heredan la deriva
+                        const a1 = new Asteroid(newSize, this.x, this.y, (this.dx || 1) + 2, this.dy);
+                        const a2 = new Asteroid(newSize, this.x + newSize, this.y, (this.dx || -1) - 2, this.dy);
+                        
+                        return [a1, a2];
+                    }
+                    return [];
+                }
+            }
+            
+            // --- Arreglos de Objetos del Juego ---
+            let ship;
+            let lasers = [];
+            let asteroids = [];
+
+            // --- Funciones Centrales ---
+
+            function resetGame() {
+                ship = new Ship();
+                lasers = [];
+                asteroids = [];
+                score = 0;
+                lives = 3;
+                
+                // --- REINICIAR DIFICULTAD ---
+                timeSinceLastAsteroid = BASE_SPAWN_INTERVAL; 
+                currentSpawnInterval = BASE_SPAWN_INTERVAL;
+                currentScoreDifficultyLevel = 0;
+                baseAsteroidSpeed = 1.0;
+                
+                updateHUD();
+                startTime = performance.now(); 
+                zenLevel = 1; 
+                
+                // --- ACTIVAR FUEGO AUTOMÁTICO ---
+                keys.space = true;
+                targetShipX = GAME_WIDTH / 2; // Centrar el objetivo
+            }
+            
+            // FORMATO LARGO (para < 1 min)
+            function formatTime(ms) {
+                const totalSeconds = Math.floor(ms / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                
+                const minText = minutes === 1 ? 'minuto' : 'minutos';
+                const secText = seconds === 1 ? 'segundo' : 'segundos';
+                
+                if (minutes > 0) {
+                    return `${minutes} ${minText} y ${seconds} ${secText}`;
+                } else {
+                    return `${seconds} ${secText}`;
+                }
+            }
+            
+            // --- NUEVO: FORMATO M:SS (para >= 1 min) ---
+            function formatTimeMinimal(ms) {
+                const totalSeconds = Math.floor(ms / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                // Añadir un cero '0' si los segundos son < 10
+                const paddedSeconds = seconds < 10 ? '0' + seconds : seconds;
+                return `${minutes}:${paddedSeconds}`;
+            }
+
+
+            // --- FUNCIÓN DE UI ACTUALIZADA (CORAZONES) ---
+            function updateHUD() {
+                scoreDisplay.textContent = score;
+                
+                livesDisplay.innerHTML = ''; // Limpiar corazones anteriores
+                for (let i = 0; i < lives; i++) {
+                    const heart = document.createElement('span');
+                    heart.innerHTML = '♥'; // Usar el carácter de corazón
+                    livesDisplay.appendChild(heart);
+                }
+            }
+
+            // --- CHEQUEO DE COLISIÓN (RECT vs CIRCLE) ---
+            function checkCollision(obj1, obj2) {
+                // obj1 = rect (ship, laser), obj2 = circle (asteroid)
+                const astCenterX = obj2.x + obj2.radius;
+                const astCenterY = obj2.y + obj2.radius;
+
+                let closeX = Math.max(obj1.x, Math.min(astCenterX, obj1.x + obj1.width));
+                let closeY = Math.max(obj1.y, Math.min(astCenterY, obj1.y + obj1.height));
+
+                const distX = astCenterX - closeX;
+                const distY = astCenterY - closeY;
+                
+                const distanceSquared = (distX * distX) + (distY * distY);
+                
+                return distanceSquared < (obj2.radius * obj2.radius);
+            }
+
+            // --- PROCESO DE COLISIÓN (SIMPLE + DIFICULTAD POR PUNTUACIÓN) ---
+            function processCollisions() {
+                
+                // 1. Chequear Láser vs. Asteroide (Puntuación y Dificultad)
+                for (let i = lasers.length - 1; i >= 0; i--) {
+                    const laser = lasers[i];
+                    if (!laser.active) continue; 
+                    
+                    for (let j = asteroids.length - 1; j >= 0; j--) {
+                        const asteroid = asteroids[j];
+                        
+                        if (asteroid.active && checkCollision(laser, asteroid)) {
+                            laser.active = false;
+                            asteroid.active = false; // Destrucción instantánea
+                            score += asteroid.value;
+
+                            // --- NUEVO: Chequeo de Dificultad por Puntuación ---
+                            if (score > (currentScoreDifficultyLevel + 1) * SCORE_DIFFICULTY_THRESHOLD) {
+                                currentScoreDifficultyLevel++;
+                                // Incrementar dificultad (10% más rápido aparición, 5% más rápido velocidad)
+                                currentSpawnInterval *= 0.9; 
+                                baseAsteroidSpeed += 0.05; 
+                                
+                                if (currentSpawnInterval < MIN_SPAWN_INTERVAL) {
+                                    currentSpawnInterval = MIN_SPAWN_INTERVAL;
+                                }
+                            }
+
+                            const newAsteroids = asteroid.split(); // Dividir si es grande
+                            asteroids.push(...newAsteroids);
+                            
+                            break; 
+                        }
+                    }
+                }
+
+                // 2. Chequear Nave vs. Asteroide (Pérdida de Vida)
+                if (lives > 0) {
+                    for (let j = asteroids.length - 1; j >= 0; j--) {
+                        const asteroid = asteroids[j];
+                        if (asteroid.active && checkCollision(ship, asteroid)) {
+                            lives--;
+                            asteroid.active = false;
+                            
+                            ship.x = GAME_WIDTH / 2 - ship.width / 2; 
+                            targetShipX = GAME_WIDTH / 2;
+                            
+                            if (lives <= 0) {
+                                gameOver();
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 3. Limpiar arreglos
+                lasers = lasers.filter(l => l.active);
+                asteroids = asteroids.filter(a => a.active);
+            }
+
+            // --- FUNCIÓN DE APARICIÓN (SIMPLE) ---
+            function spawnAsteroid(deltaTime) {
+                // Lógica de Asteroides
+                timeSinceLastAsteroid += deltaTime;
+                if (timeSinceLastAsteroid > currentSpawnInterval) {
+                    asteroids.push(new Asteroid()); 
+                    timeSinceLastAsteroid = 0;
+                }
+            }
+
+            // --- FUNCIÓN GAMEOVER CON LÓGICA DE MENSAJE ACTUALIZADA ---
+            function gameOver() {
+                gameRunning = false;
+                cancelAnimationFrame(animationFrameId);
+                stopBreathing(); 
+                gameContainer.style.cursor = 'default'; // Restablecer cursor
+                
+                endTime = performance.now();
+                const totalZenTime = endTime - startTime;
+                const totalMinutes = Math.floor(totalZenTime / 60000);
+                
+                let contentHTML = ""; // Variable para el contenido del modal
+
+                // --- Lógica de Mensajes Zen (Dividida) ---
+                if (totalMinutes <= 0) {
+                    // --- MENSAJE PARA MENOS DE 1 MINUTO ---
+                    const formattedZenTime = formatTime(totalZenTime); // Usa el formato largo ("XX segundos")
+                    
+                    contentHTML = `
+                        <!-- 1. Puntuación -->
+                        <p class="final-score" style="margin-bottom: 35px; margin-top: 0;">
+                            <span style="color: #ffcc00; font-size: 3em; text-shadow: 0 0 10px #ffcc00;">${score}</span>
+                        </p>
+                        
+                        <!-- 2. Mensaje de Segundos + Motivación -->
+                        <p class="zen-motivation" style="margin-top: 0; font-size: clamp(1.1rem, 4vw, 1.3rem);">
+                            ${formattedZenTime}<br><strong>¡Vos podés respirar más!</strong>
+                        </p>
+                        
+                        <!-- 3. Botón de Reinicio -->
+                        <button id="start-button" style="margin-top: 35px;">Reiniciar Juego</button>
+                    `;
+                
+                } else {
+                    // --- MENSAJE PARA 1 MINUTO O MÁS ---
+                    const zenMessages = [
+                        "disminuir la frecuencia cardíaca.", // Min 1 (índice 0)
+                        "regular tu sistema nervioso.", // Min 2 (índice 1)
+                        "optimizar la oxigenación cerebral.", // Min 3 (índice 2)
+                        "estabilizar tu patrón respiratorio.", // Min 4 (índice 3)
+                        "iniciar la reducción de cortisol.", // Min 5 (índice 4)
+                        "sostener la activación parasimpática.", // Min 6 (índice 5)
+                        "alcanzar la coherencia cardíaca.", // Min 7 (índice 6)
+                        "equilibrar tu homeostasis autonómica.", // Min 8 (índice 7)
+                        "inducir un estado alfa de actividad cortical.", // Min 9 (índice 8)
+                        "alcanzar la estabilidad fisiológica óptima." // Min 10+ (índice 9)
+                    ];
+                    
+                    let zenAchievement = "";
+                    if (totalMinutes >= 10) {
+                        zenAchievement = zenMessages[9]; // Mensaje de 10 minutos o más
+                    } else {
+                        zenAchievement = zenMessages[totalMinutes - 1]; // Mensajes para minutos 1-9
+                    }
+                    
+                    // --- NUEVO FORMATO DE MENSAJE (M:SS) ---
+                    const minimalTime = formatTimeMinimal(totalZenTime); // Llama al nuevo formato "M:SS"
+                    let fullMessage = `<strong>${minimalTime}</strong> y ya empezaste a ${zenAchievement}`;
+
+                    contentHTML = `
+                        <!-- 1. Puntuación -->
+                        <p class="final-score" style="margin-bottom: 35px; margin-top: 0;">
+                            <span style="color: #ffcc00; font-size: 3em; text-shadow: 0 0 10px #ffcc00;">${score}</span>
+                        </p>
+                        
+                        <!-- 2. Mensaje de Logro Zen (Actualizado) -->
+                        <p class="zen-feedback" style="margin-top: 0; font-size: clamp(1.1rem, 4vw, 1.3rem);">
+                            ${fullMessage}
+                        </p>
+                        
+                        <!-- 3. Botón de Reinicio -->
+                        <button id="start-button" style="margin-top: 35px;">Reiniciar Juego</button>
+                    `;
+                }
+                
+                messageBox.innerHTML = contentHTML;
+                
+                // CRÍTICO: Reasignar el listener al botón RECIÉN CREADO para reiniciar el juego
+                document.getElementById('start-button').addEventListener('click', handleStartGame);
+                
+                messageBox.classList.add('visible');
+            }
+
+            // --- Bucle del Juego (SIMPLE) ---
+            function gameLoop(timestamp) {
+                if (!gameRunning) return;
+
+                const deltaTime = timestamp - lastTime;
+                lastTime = timestamp;
+                
+                // 1. Limpiar el canvas (transparente)
+                ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                // 2. Actualizar y Dibujar (Orden de dibujado es importante)
+                ship.update(deltaTime);
+                ship.draw();
+                
+                lasers.forEach(l => l.update());
+                lasers.forEach(l => l.draw());
+                
+                asteroids.forEach(a => a.update());
+                asteroids.forEach(a => a.draw());
+
+                // 3. Generar, Colisionar y Actualizar HUD
+                spawnAsteroid(deltaTime);
+                processCollisions();
+                updateHUD();
+
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            // Función única para manejar el inicio/reinicio del juego
+            async function handleStartGame() {
+                if (gameRunning) return; 
+
+                initAudio();
+                await safelyResumeAudio(audioContext); 
+
+                // Reconstruir el mensaje inicial si no existe ya
+                if (!document.querySelector('#message-box h2') || document.querySelector('#message-box h2').textContent !== 'Tirador Cósmico') {
+                    messageBox.innerHTML = `
+                        <h2>Tirador Cósmico</h2>
+                        <p class="zen-benefit">
+                            Beneficios Neurocognitivos: La implementación consciente del ciclo de Respiración de Caja (Box Breathing 4:4:4:4) facilita la modulación del Sistema Nervioso Autónomo, desplazando el equilibrio hacia el estado parasimpático.
+                        </p>
+                        <p>Arrastra el dedo (o el mouse) para moverte.<br>El disparo es automático. Concéntrate en respirar.</p>
+                        <p style="color: #00ffaa; font-weight: bold;">¡El audio y el fondo te guiarán!</p>
+                        <button id="start-button">Iniciar Juego</button>
+                    `;
+                    // Asegurar que el listener está en el nuevo botón
+                    document.getElementById('start-button').addEventListener('click', handleStartGame);
+                }
+
+
+                resetGame();
+                gameRunning = true;
+                lastTime = performance.now();
+                messageBox.classList.remove('visible'); 
+                gameContainer.style.cursor = 'grab'; // Cambiar cursor al iniciar
+                
+                startBreathing();
+                
+                gameLoop(lastTime);
+            }
+            
+            // Inicializar el listener del botón de inicio original
+            document.getElementById('start-button').addEventListener('click', handleStartGame);
+
+            // Configuración inicial
+            resetGame();
+            gameRunning = false;
+        };
+    </script>
+</body>
+</html>
+

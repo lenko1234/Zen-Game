@@ -1,0 +1,253 @@
+/* Restablecimiento global y estilo del cuerpo */
+body {
+    background-color: #0d0d1f; /* Azul oscuro del espacio profundo */
+    color: #ffffff;
+    font-family: 'Orbitron', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding-top: 20px;
+    margin: 0;
+    overflow-x: hidden; /* Previene el scroll horizontal en móviles */
+    user-select: none;
+}
+
+/* Contenedor del Juego */
+.game-container {
+    width: 95vw;
+    max-width: 600px; 
+    aspect-ratio: 1 / 1.5; 
+    background-color: #000000;
+    /* Estilo inicial del borde (Zen Level 1 - Exhale/Pause default) */
+    border: 5px solid #0000aa; 
+    box-shadow: 0 0 5px #0000aa, 0 0 3px #0000aa inset;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    /* Transición para el efecto de respiración - 5 segundos de duración */
+    transition: box-shadow 5s ease-in-out, border-color 0.5s; 
+    cursor: grab;
+}
+.game-container:active {
+    cursor: grabbing;
+}
+
+/* --- Capa de Resplandor de Fondo --- */
+.breathing-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Detrás del canvas y la UI */
+    /* Estado inicial (PAUSAR) */
+    background-color: #0000aa;
+    opacity: 0.05;
+    /* Transición suave de 5 segundos */
+    transition: background-color 5s ease-in-out, opacity 5s ease-in-out;
+    border-radius: 6px; /* Para coincidir con el contenedor interno */
+}
+
+/* --- CLASES DE ANIMACIÓN DE RESPIRACIÓN (COLOR/INTENSIDAD) --- */
+
+/* 1. INHALAR (Verde/Expande) */
+.breathing-inhale {
+    border-color: #00ff00 !important;
+    box-shadow: 0 0 40px #00ff00, 0 0 10px #00ff00 inset !important;
+}
+.breathing-inhale .breathing-overlay {
+    background-color: #00ff00;
+    opacity: 0.15; /* Sutil pero notable */
+}
+
+/* 2. SOSTENER 1 (Verde/Brillo máximo estable) */
+.breathing-hold1 {
+    border-color: #00ffaa !important;
+    box-shadow: 0 0 40px #00ffaa, 0 0 10px #00ffaa inset !important;
+}
+.breathing-hold1 .breathing-overlay {
+    background-color: #00ffaa;
+    opacity: 0.15;
+}
+
+/* 3. EXHALAR (Azul/El brillo se reduce) */
+.breathing-exhale {
+    border-color: #0000ff !important;
+    box-shadow: 0 0 10px #0000ff, 0 0 5px #0000ff inset !important;
+}
+.breathing-exhale .breathing-overlay {
+    background-color: #0000ff;
+    opacity: 0.1;
+}
+
+/* 4. PAUSAR (Azul/Brillo mínimo estable) */
+.breathing-hold2 {
+    border-color: #0000aa !important;
+    box-shadow: 0 0 5px #0000aa, 0 0 3px #0000aa inset !important;
+}
+.breathing-hold2 .breathing-overlay {
+    background-color: #0000aa;
+    opacity: 0.05;
+}
+
+/* Estilo del Canvas */
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative; /* Necesario para z-index */
+    z-index: 2; /* Encima de la capa de resplandor */
+    background-color: transparent; /* El fondo ahora es transparente */
+}
+
+/* --- BARRA DE INFORMACIÓN (MODIFICADA) --- */
+.info-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 15px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: space-between; /* Puntuación a la izq, Corazones a la der */
+    align-items: center;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10; /* Encima de todo */
+}
+
+/* Puntuación (Solo número) */
+#score-display {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ffcc00; 
+    text-shadow: 0 0 5px rgba(255, 204, 0, 0.8);
+}
+
+/* Corazones (Vidas) */
+#lives-display {
+    display: flex;
+    gap: 5px; /* Espacio entre corazones */
+    font-size: 1.3rem; /* Tamaño del corazón */
+    color: #ff3333;
+    text-shadow: 0 0 5px #ff3333;
+}
+
+/* Estilos de mensaje y botón de inicio (mantener) */
+#message-box {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    z-index: 20; /* Encima de todo */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s;
+    border-radius: 12px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#message-box.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+#message-box h2 {
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+    margin-bottom: 10px;
+    color: #ff3333;
+    text-shadow: 0 0 10px #ff3333;
+}
+
+#message-box p {
+    font-size: clamp(1rem, 3vw, 1.2rem);
+    margin-bottom: 25px;
+    color: #00ffaa;
+}
+
+/* Texto técnico de beneficios */
+#message-box p.zen-benefit {
+    font-size: clamp(0.9rem, 2.5vw, 1rem);
+    color: #aaffaa; 
+    max-width: 85%; 
+    margin: 15px auto;
+    line-height: 1.4;
+    font-weight: 400;
+}
+
+
+/* Estilo específico para el texto final que incluye el tiempo */
+#message-box p.final-score {
+    line-height: 1.5;
+    color: #ffffff;
+    font-size: clamp(1rem, 3.5vw, 1.3rem);
+}
+
+/* --- NUEVO ESTILO PARA FEEDBACK ZEN --- */
+#message-box p.zen-feedback {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    border-left: 4px solid #00ffff;
+    background-color: rgba(0, 255, 255, 0.05);
+    color: #00ffff; /* Color Cian */
+    font-size: clamp(1rem, 3.5vw, 1.2rem);
+    font-weight: bold;
+    max-width: 85%;
+    text-shadow: 0 0 5px #00ffff;
+    line-height: 1.5;
+}
+
+/* Estilo para el mensaje de "Vos podés más" */
+#message-box p.zen-motivation {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    color: #aaffaa; /* Verde claro */
+    font-size: clamp(1rem, 3.5vw, 1.2rem);
+    font-weight: bold;
+    max-width: 85%;
+    line-height: 1.5;
+}
+
+
+#start-button {
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-family: 'Orbitron', sans-serif;
+    border: 3px solid #00ffff;
+    background-color: #000044;
+    color: #00ffff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+#start-button:hover {
+    background-color: #00ffff;
+    color: #000044;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 1);
+}
+
+/* Controles Móviles (OCULTOS EN MODO ENFOQUE ZEN) */
+.mobile-controls-wrapper {
+    display: none; /* Oculto ya que usamos control táctil directo */
+}
+
+@media (min-width: 600px) {
+    .mobile-controls-wrapper {
+        display: none;
+    }
+}
