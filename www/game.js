@@ -43,13 +43,13 @@ let zenLevel = 1;
 let breathingTimeoutId = null;
 const BREATHING_PHASES = ['INHALAR', 'SOSTENER', 'EXHALAR', 'PAUSAR']; 
 let currentPhaseIndex = 0;
-const PHASE_DURATION_MS = 5000; // 5 segundos por fase (20s ciclo total)
-const PHASE_DURATION_SECONDS = PHASE_DURATION_MS / 1000; // 5 segundos
+const PHASE_DURATION_MS = 4000; // 4 segundos por fase (16s ciclo total)
+const PHASE_DURATION_SECONDS = PHASE_DURATION_MS / 1000; // 4 segundos
 
 // --- TUTORIAL DE CALIBRACIÓN ---
 let tutorialActive = false;
 let tutorialPhaseIndex = 0;
-let tutorialTimeRemaining = 5;
+let tutorialTimeRemaining = 4;
 let tutorialIntervalId = null;
 
 // --- AUDIO DE MÚSICA DE FONDO ---
@@ -226,7 +226,7 @@ function updateDailyStreak() {
 function startTutorial() {
     tutorialActive = true;
     tutorialPhaseIndex = 0;
-    tutorialTimeRemaining = 5;
+    tutorialTimeRemaining = 4;
     
     runTutorialPhase();
     
@@ -294,7 +294,7 @@ function runTutorialPhase() {
     }
     
     // Iniciar cuenta regresiva
-    tutorialTimeRemaining = 5;
+    tutorialTimeRemaining = 4;
     if (tutorialIntervalId) clearInterval(tutorialIntervalId);
     
     tutorialIntervalId = setInterval(() => {
@@ -393,10 +393,10 @@ class Ship {
     }
 
     update(deltaTime) {
-        // Animar escala gradualmente - toma 5 segundos para cambiar de 1.0 a 1.5
-        // Diferencia de escala: 0.5, debe completarse en 5000ms
-        // Velocidad = 0.5 / 5000ms = 0.0001 por ms
-        const scaleSpeed = 0.0001 * deltaTime;
+        // Animar escala gradualmente - toma 4 segundos para cambiar de 1.0 a 1.3
+        // Diferencia de escala: 0.3, debe completarse en 4000ms
+        // Velocidad = 0.3 / 4000ms = 0.000075 por ms
+        const scaleSpeed = 0.000075 * deltaTime;
         
         if (this.currentScale < this.targetScale) {
             this.currentScale = Math.min(this.currentScale + scaleSpeed, this.targetScale);
@@ -676,6 +676,13 @@ function checkRectCollision(rect1, rect2) {
            rect1.y + rect1.height > rect2.y;
 }
 
+// Función de vibración
+function vibrate(duration) {
+    if (navigator.vibrate) {
+        navigator.vibrate(duration);
+    }
+}
+
 // --- PROCESO DE COLISIÓN (SIMPLE + DIFICULTAD POR PUNTUACIÓN) ---
 function processCollisions() {
     
@@ -737,6 +744,7 @@ function processCollisions() {
             if (asteroid.active && checkCollision(ship, asteroid)) {
                 lives--;
                 asteroid.active = false;
+                vibrate(200); // Vibración de 200ms al perder vida
                 
                 ship.x = GAME_WIDTH / 2 - ship.width / 2; 
                 targetShipX = GAME_WIDTH / 2;
@@ -758,6 +766,7 @@ function processCollisions() {
             tripleShotEndTime = performance.now() + 10000; // Renovar 10 segundos
             numShots++; // Incrementar cantidad de disparos
             powerUpsCollected++; // Incrementar contador para reducir spawn
+            vibrate(100); // Vibración corta de 100ms al recoger power-up
         }
     }
 
@@ -1014,7 +1023,7 @@ function handleStartGame() {
 
     // Reconstruir mensaje de inicio
     messageBox.innerHTML = `
-        <h2>Tirador Cósmico</h2>
+        <h2>Nave Zen</h2>
         
         <p class="zen-benefit">
             Este juego es un ejercicio de respiración diseñado para calmar tu sistema nervioso. Sigue el ritmo y relaja tu mente.
@@ -1044,11 +1053,16 @@ function handleStartGame() {
     }
 }
 
-// Inicializar el listener del botón de inicio original
-document.getElementById('start-button').addEventListener('click', handleStartGame);
-document.getElementById('benefits-button').addEventListener('click', showBenefitsMenu);
-
-// Función para mostrar el menú de beneficios
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar el listener del botón de inicio original
+    document.getElementById('start-button').addEventListener('click', handleStartGame);
+    document.getElementById('benefits-button').addEventListener('click', showBenefitsMenu);
+    
+    // Configuración inicial
+    resetGame();
+    gameRunning = false;
+});
 function showBenefitsMenu() {
     messageBox.innerHTML = `
         <div style="
@@ -1174,6 +1188,3 @@ function showBenefitsMenu() {
     });
 }
 
-// Configuración inicial
-resetGame();
-gameRunning = false;
