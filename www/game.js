@@ -53,7 +53,7 @@ let tutorialTimeRemaining = 4;
 let tutorialIntervalId = null;
 
 // --- AUDIO DE MÚSICA DE FONDO ---
-const backgroundMusic = new Audio('assets/cancion.mp3');
+const backgroundMusic = new Audio('assets/cancion.ogg');
 backgroundMusic.loop = true; // Repetir en bucle automáticamente
 backgroundMusic.volume = 0.3; // Volumen al 30%
 
@@ -798,10 +798,11 @@ function spawnAsteroid(deltaTime) {
 // --- FUNCIÓN PARA MOSTRAR ESTADÍSTICAS ---
 function showStats() {
     const currentStreak = parseInt(localStorage.getItem('zenStreakCount')) || 0;
+    const highScore = parseInt(localStorage.getItem('highScore')) || 0;
     
     // Mensajes de beneficios según la racha (días 1-30+)
     const benefitMessages = {
-        1: "Has dado el primer paso hacia el bienestar mental. En unos días la respiración consciente va a activar tu sistema nervioso parasimpático.",
+        1: "Diste el primer paso. Pronto tu mente y cuerpo encontrarán su equilibrio.",
         2: "Con tu práctica, puedes notar pequeñas mejoras en tu concentración y una sensación ligera de calma. Esto es el primer efecto del sistema nervioso parasimpático activándose.",
         3: "Si continúas practicando, tu cuerpo comienza a acostumbrarse a la respiración controlada, ayudando a reducir respuestas inmediatas de estrés.",
         4: "La respiración regular empieza a influir en tu frecuencia cardíaca y en tu ritmo respiratorio, aunque de forma sutil.",
@@ -850,10 +851,17 @@ function showStats() {
             z-index: -1;
         "></div>
         
-        <p style="color: #ff9900; font-size: 2.5rem; margin: 20px 0; text-shadow: 0 0 10px #ff9900; position: relative; z-index: 1;">
-            🔥 ${currentStreak}
+        <p style="color: #ffcc00; font-size: 2.5rem; margin: 20px 0; text-shadow: 0 0 10px #ffcc00; position: relative; z-index: 1;">
+            🏆 ${highScore}
         </p>
         <p style="color: #00ffaa; font-size: 1.2rem; margin-bottom: 25px; position: relative; z-index: 1;">
+            puntuación máxima
+        </p>
+        
+        <p style="color: #ff9900; font-size: 1.8rem; margin: 15px 0; text-shadow: 0 0 8px #ff9900; position: relative; z-index: 1;">
+            🔥 ${currentStreak}
+        </p>
+        <p style="color: #00ffaa; font-size: 1rem; margin-bottom: 25px; position: relative; z-index: 1;">
             ${currentStreak === 1 ? 'día consecutivo' : 'días consecutivos'}
         </p>
         
@@ -877,6 +885,15 @@ function gameOver() {
         
         // Guardar el tiempo una sola vez cuando termina el juego
         endTime = performance.now();
+        
+        // Actualizar récord de puntuación si es necesario
+        const currentHighScore = parseInt(localStorage.getItem('highScore')) || 0;
+        if (score > currentHighScore) {
+            localStorage.setItem('highScore', score);
+        }
+        
+        // Programar notificación para mañana
+        scheduleNextDayReminder();
     }
     
     // La música sigue sonando, NO la detenemos
@@ -895,24 +912,41 @@ function gameOver() {
         const formattedZenTime = formatTime(totalZenTime); // Usa el formato largo ("XX segundos")
         
         contentHTML = `
+            <!-- Video de fondo -->
+            <video autoplay loop muted playsinline style="
+                position: absolute;
+                top: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                min-width: 100%;
+                min-height: 100%;
+                width: auto;
+                height: 100%;
+                object-fit: cover;
+                filter: brightness(0.5);
+                z-index: -1;
+            ">
+                <source src="assets/Animated_Breathwork_Background_Loop.mp4" type="video/mp4">
+            </video>
+            
             <!-- 1. Puntuación -->
-            <p class="final-score" style="margin-bottom: 35px; margin-top: 0;">
+            <p class="final-score" style="margin-bottom: 35px; margin-top: 0; position: relative; z-index: 1;">
                 <span style="color: #ffcc00; font-size: 3em; text-shadow: 0 0 10px #ffcc00;">${score}</span>
             </p>
             
             <!-- 2. Tiempo -->
-            <p style="margin-top: 0; margin-bottom: 10px; font-size: clamp(1.1rem, 4vw, 1.3rem); color: #00ffaa;">
+            <p style="margin-top: 0; margin-bottom: 10px; font-size: clamp(1.1rem, 4vw, 1.3rem); color: #00ffaa; position: relative; z-index: 1;">
                 ${formattedZenTime}
             </p>
             
             <!-- 3. Mensaje de Motivación -->
-            <p class="zen-motivation" style="margin-top: 0; margin-bottom: 25px; font-size: clamp(1.1rem, 4vw, 1.3rem);">
+            <p class="zen-motivation" style="margin-top: 0; margin-bottom: 25px; font-size: clamp(1.1rem, 4vw, 1.3rem); position: relative; z-index: 1;">
                 <strong>¡Vos podés respirar más!</strong>
             </p>
             
             <!-- 4. Botones -->
-            <button id="stats-button" style="margin-top: 25px; background: #00ffaa; color: #000;">Ver Estadísticas</button>
-            <button id="start-button" style="margin-top: 10px;">Reiniciar Juego</button>
+            <button id="stats-button" style="margin-top: 25px; background: #00ffaa; color: #000; position: relative; z-index: 1;">Ver Estadísticas</button>
+            <button id="start-button" style="margin-top: 10px; position: relative; z-index: 1;">Reiniciar Juego</button>
         `;
     
     } else {
@@ -941,28 +975,51 @@ function gameOver() {
         const minimalTime = formatTimeMinimal(totalZenTime); // Llama al nuevo formato "M:SS"
 
         contentHTML = `
+            <!-- Video de fondo -->
+            <video autoplay loop muted playsinline style="
+                position: absolute;
+                top: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                min-width: 100%;
+                min-height: 100%;
+                width: auto;
+                height: 100%;
+                object-fit: cover;
+                filter: brightness(0.5);
+                z-index: -1;
+            ">
+                <source src="assets/Animated_Breathwork_Background_Loop.mp4" type="video/mp4">
+            </video>
+            
             <!-- 1. Puntuación -->
-            <p class="final-score" style="margin-bottom: 35px; margin-top: 0;">
+            <p class="final-score" style="margin-bottom: 35px; margin-top: 0; position: relative; z-index: 1;">
                 <span style="color: #ffcc00; font-size: 3em; text-shadow: 0 0 10px #ffcc00;">${score}</span>
             </p>
             
             <!-- 2. Tiempo -->
-            <p style="margin-top: 0; margin-bottom: 10px; font-size: clamp(1.1rem, 4vw, 1.3rem); color: #00ffaa;">
+            <p style="margin-top: 0; margin-bottom: 10px; font-size: clamp(1.1rem, 4vw, 1.3rem); color: #00ffaa; position: relative; z-index: 1;">
                 ${minimalTime}
             </p>
             
             <!-- 3. Mensaje de Logro Zen -->
-            <p class="zen-feedback" style="margin-top: 0; margin-bottom: 25px; font-size: clamp(1.1rem, 4vw, 1.3rem);">
-                Empezaste a ${zenAchievement}
+            <p class="zen-feedback" style="margin-top: 0; margin-bottom: 25px; font-size: clamp(1.1rem, 4vw, 1.3rem); position: relative; z-index: 1;">
+                Lograste ${zenAchievement}
             </p>
             
             <!-- 4. Botones -->
-            <button id="stats-button" style="margin-top: 25px; background: #00ffaa; color: #000;">Ver Estadísticas</button>
-            <button id="start-button" style="margin-top: 10px;">Reiniciar Juego</button>
+            <button id="stats-button" style="margin-top: 25px; background: #00ffaa; color: #000; position: relative; z-index: 1;">Ver Estadísticas</button>
+            <button id="start-button" style="margin-top: 10px; position: relative; z-index: 1;">Reiniciar Juego</button>
         `;
     }
     
     messageBox.innerHTML = contentHTML;
+    
+    // Reducir velocidad del video de fondo si existe
+    const bgVideo = messageBox.querySelector('video');
+    if (bgVideo) {
+        bgVideo.playbackRate = 0.5; // Velocidad al 50% (más lento)
+    }
     
     // CRÍTICO: Reasignar los listeners a los botones RECIÉN CREADOS
     document.getElementById('start-button').addEventListener('click', handleStartGame);
@@ -1023,13 +1080,37 @@ function handleStartGame() {
 
     // Reconstruir mensaje de inicio
     messageBox.innerHTML = `
-        <h2>Nave Zen</h2>
+        <!-- Video de fondo para inicio -->
+        <video autoplay loop muted playsinline id="inicio-video" style="
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.3) blur(8px);
+            z-index: -1;
+        ">
+            <source src="assets/inicio-background.mp4?v=${Date.now()}" type="video/mp4">
+        </video>
         
-        <p class="zen-benefit">
+        <h2 style="position: relative; z-index: 1;">Nave Zen</h2>
+        
+        <p class="zen-benefit" style="position: relative; z-index: 1;">
             Este juego es un ejercicio de respiración diseñado para calmar tu sistema nervioso. Sigue el ritmo y relaja tu mente.
         </p>
-        <button id="start-button">Iniciar Juego</button>
+        <button id="start-button" style="position: relative; z-index: 1;">Iniciar Juego</button>
     `;
+    
+    // Reducir velocidad del video de inicio
+    const startVideo = messageBox.querySelector('video');
+    if (startVideo) {
+        startVideo.playbackRate = 0.4; // Velocidad al 40%
+    }
+    
     // Asegurar que el listener está en el nuevo botón
     document.getElementById('start-button').addEventListener('click', handleStartGame);
 
@@ -1054,10 +1135,36 @@ function handleStartGame() {
 }
 
 // Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Agregar video de fondo al inicio
+    const videoHTML = `
+        <video autoplay loop muted playsinline id="inicio-video" style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.3) blur(8px);
+            z-index: 0;
+        ">
+            <source src="assets/inicio-background.mp4" type="video/mp4">
+        </video>
+    `;
+    messageBox.insertAdjacentHTML('afterbegin', videoHTML);
+    
+    // Reducir velocidad del video
+    const startVideo = document.getElementById('inicio-video');
+    if (startVideo) {
+        startVideo.playbackRate = 0.4;
+    }
+    
     // Inicializar el listener del botón de inicio original
     document.getElementById('start-button').addEventListener('click', handleStartGame);
     document.getElementById('benefits-button').addEventListener('click', showBenefitsMenu);
+    
+    // Solicitar permisos de notificaciones
+    await requestNotificationPermissions();
     
     // Configuración inicial
     resetGame();
@@ -1186,5 +1293,95 @@ function showBenefitsMenu() {
         messageBox.classList.remove('visible');
         location.reload(); // Recargar para volver al menú inicial
     });
+}
+
+// --- FUNCIONES DE NOTIFICACIONES ---
+async function requestNotificationPermissions() {
+    try {
+        // Verificar si Capacitor está disponible (solo en app nativa)
+        if (typeof Capacitor === 'undefined' || !Capacitor.Plugins.LocalNotifications) {
+            console.log('LocalNotifications no disponible (navegador web)');
+            return false;
+        }
+        const result = await Capacitor.Plugins.LocalNotifications.requestPermissions();
+        return result.display === 'granted';
+    } catch (error) {
+        console.log('Error al solicitar permisos de notificaciones:', error);
+        return false;
+    }
+}
+
+async function scheduleNextDayReminder() {
+    try {
+        // Verificar si Capacitor está disponible (solo en app nativa)
+        if (typeof Capacitor === 'undefined' || !Capacitor.Plugins.LocalNotifications) {
+            console.log('LocalNotifications no disponible (navegador web)');
+            return;
+        }
+        
+        // Cancelar notificaciones previas
+        await Capacitor.Plugins.LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+        
+        // Obtener datos
+        const today = new Date();
+        const todayStr = getFormattedDate(today);
+        const lastPlayDate = localStorage.getItem('lastPlayDate');
+        const currentStreak = parseInt(localStorage.getItem('zenStreakCount')) || 0;
+        
+        // Calcular cuántos días pasaron desde la última sesión
+        let daysSinceLastPlay = 0;
+        if (lastPlayDate && lastPlayDate !== todayStr) {
+            const lastDate = new Date(lastPlayDate);
+            const diffTime = today - lastDate;
+            daysSinceLastPlay = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+        
+        // Mensajes según días sin jugar (si perdió la racha)
+        const lostStreakMessages = [
+            "¡Volvé a respirar! Empezá una nueva racha hoy.", // Día 1
+            "¡Tu mente te lo agradecerá! Es hora de tu momento de calma.", // Día 2
+            "No dejes que se escape el día. Solo unos minutos hacen la diferencia.", // Día 3
+            "¡Racha en marcha! Mantené el ritmo y seguí construyendo tu bienestar.", // Día 4
+            "Hacé una pausa. Tomate un momento para vos antes de seguir." // Día 5
+        ];
+        
+        let notificationBody = "";
+        
+        // Si tiene racha activa (jugó hoy o ayer)
+        if (daysSinceLastPlay <= 1) {
+            notificationBody = `¡Mantené tu racha de ${currentStreak} ${currentStreak === 1 ? 'día' : 'días'}! Respirá hoy.`;
+        } else if (daysSinceLastPlay <= 5) {
+            // Perdió la racha, usar mensaje según días sin jugar (índice daysSinceLastPlay - 1)
+            notificationBody = lostStreakMessages[daysSinceLastPlay - 1];
+        } else {
+            // Más de 5 días: NO programar notificación
+            console.log('Han pasado más de 5 días. No se programa notificación.');
+            return;
+        }
+        
+        // Programar notificación para mañana a las 09:00 AM
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0);
+        
+        await Capacitor.Plugins.LocalNotifications.schedule({
+            notifications: [
+                {
+                    title: "🧘 Nave Zen",
+                    body: notificationBody,
+                    id: 1,
+                    schedule: { at: tomorrow },
+                    sound: null,
+                    attachments: null,
+                    actionTypeId: "",
+                    extra: null
+                }
+            ]
+        });
+        
+        console.log('Notificación programada para:', tomorrow, '- Mensaje:', notificationBody);
+    } catch (error) {
+        console.log('Error al programar notificación:', error);
+    }
 }
 
